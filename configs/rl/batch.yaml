@@ -17,9 +17,9 @@
 #       ["wide3D", "WideModel3DSkip"],
 #       ["cellular3D", null],
         ["narrow", null],
-#        ["wide", null],
+        # ["wide", null],
 #       ["cellular", null],
-#       ['turtle', null],
+        # ['turtle', null],
   ],
 
   # TODO: incorporate formal (rather than only functional) metrics as controls

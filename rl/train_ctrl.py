@@ -9,7 +9,7 @@ import gym
 import numpy as np
 
 import gym_pcgrl
-from models import CustomFeedForwardModel, CustomFeedForwardModel3D, WideModel3D, WideModel3DSkip  # noqa : F401
+from models import CustomFeedForwardModel, CustomFeedForwardModel3D, WideModel3D, WideModel3DSkip, CustomFeatureCuriosityModel # noqa : F401
 from args import parse_args
 from envs import make_env
 # from stable_baselines3.common.policies import ActorCriticCnnPolicy
@@ -76,13 +76,14 @@ def main(cfg):
         # Using this simple feedforward model for now by default
         model_cls = globals()[cfg.model] if cfg.model else CustomFeedForwardModel
         ModelCatalog.register_custom_model("feedforward", model_cls)
+        # curious_feature_model_cls = globals()[CustomFeatureCuriosityModel]
+        ModelCatalog.register_custom_model("curiousityfeaturenet", CustomFeatureCuriosityModel)
     else:
         if cfg.representation == "wide3D":
             model_cls = globals()[cfg.model] if cfg.model else WideModel3D
             ModelCatalog.register_custom_model("feedforward", model_cls)
         else:
             model_cls = globals()[cfg.model] if cfg.model else CustomFeedForwardModel3D
-            ModelCatalog.register_custom_model("feedforward", model_cls)
 
     # The rllib trainer config (see the docs here: https://docs.ray.io/en/latest/rllib/rllib-training.html)
     trainer_config = {
@@ -106,13 +107,31 @@ def main(cfg):
             # for using ~/ray_results/...).
             "logdir": log_dir,
         },
-        #       "exploration_config": {
-        #           "type": "Curiosity",
-        #       }
-        #       "log_level": "INFO",
-        #       "train_batch_size": 32,
-        #       "sgd_minibatch_size": 32,
-    }
+        "exploration_config": {
+            "type": "Curiosity",  # <- Use the Curiosity module for exploring.
+            "eta": 1.0,  # Weight for intrinsic rewards before being added to extrinsic ones.
+            "lr": 0.001,  # Learning rate of the curiosity (ICM) module.
+            "feature_dim": 256,  # Dimensionality of the generated feature vectors.
+            # Setup of the feature net (used to encode observations into feature (latent) vectors).
+            "feature_net_config": {
+                "custom_model" : "curiousityfeaturenet"
+            },
+            "inverse_net_hiddens": [256],  # Hidden layers of the "inverse" model.
+            "inverse_net_activation": "relu",  # Activation of the "inverse" model.
+            "forward_net_hiddens": [256],  # Hidden layers of the "forward" model.
+            "forward_net_activation": "relu",  # Activation of the "forward" model.
+            "beta": 0.2,  # Weight for the "forward" loss (beta) over the "inverse" loss (1.0 - beta).
+            # Specify, which exploration sub-type to use (usually, the algo's "default"
+            # exploration, e.g. EpsilonGreedy for DQN, StochasticSampling for PG/SAC).
+            "sub_exploration": {
+                "type": "StochasticSampling",
+            },
+            # "log_level": "INFO",
+            # "train_batch_size": 32,
+            # "sgd_minibatch_size": 32,
+        }
+        
+}
 
     register_env('pcgrl', make_env)
 
