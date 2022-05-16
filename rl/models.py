@@ -56,6 +56,54 @@ class CustomFeedForwardModel(TorchModelV2, nn.Module):
         return action_out, []
 
 
+class CustomFeatureCuriosityModel(TorchModelV2, nn.Module):
+    def __init__(self,
+                 obs_space,
+                 action_space,
+                 num_outputs,
+                 model_config,
+                 name,
+                 conv_filters=1,
+                 fc_size=256,
+                 ):
+        nn.Module.__init__(self)
+        super().__init__(obs_space, action_space, num_outputs, model_config,
+                         name)
+
+        # self.obs_size = get_preprocessor(obs_space)(obs_space).size
+        obs_shape = obs_space.shape
+        self.pre_fc_size = (obs_shape[-2] - 12) * (obs_shape[-3] - 12) * conv_filters
+        self.fc_size = fc_size
+
+        # TODO: use more convolutions here? Change and check that we can still overfit on binary problem.
+        self.conv_1 = nn.Conv2d(obs_space.shape[-1], out_channels=conv_filters, kernel_size=5, stride=1, padding=0)
+        self.conv_2 = nn.Conv2d(conv_filters, out_channels=conv_filters, kernel_size=5, stride=1, padding=0)
+        self.conv_3 = nn.Conv2d(conv_filters, out_channels=conv_filters, kernel_size=5, stride=1, padding=0)
+
+        self.fc_1 = SlimFC(self.pre_fc_size, self.fc_size)
+        # self.action_branch = SlimFC(self.fc_size, num_outputs)
+        # self.value_branch = SlimFC(self.fc_size, 1)
+        # Holds the current "base" output (before logits layer).
+        # self._features = None
+
+    # @override(ModelV2)
+    # def value_function(self):
+    #     assert self._features is not None, "must call forward() first"
+    #     return th.reshape(self.value_branch(self._features), [-1])
+
+    def forward(self, input_dict, state, seq_lens):
+        input = input_dict["obs"].permute(0, 3, 1, 2)  # Because rllib order tensors the tensorflow way (channel last)
+        x = nn.functional.relu(self.conv_1(input.cuda()))
+        x = nn.functional.relu(self.conv_2(x))
+        x = nn.functional.relu(self.conv_3(x))
+        x = x.reshape(x.size(0), -1)
+        x = self.fc_1(x)
+        
+        # action_out = self.action_branch(self._features)
+
+        return x , []
+
+
 class CustomFeedForwardModel3D(TorchModelV2, nn.Module):
     def __init__(self,
                  obs_space,
