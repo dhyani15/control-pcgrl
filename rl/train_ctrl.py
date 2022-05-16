@@ -20,6 +20,7 @@ from ray.rllib.agents import ppo
 from ray.rllib.models import ModelCatalog
 from ray.tune.registry import register_env
 from ray.tune.logger import pretty_print
+from exploration import CustomCuriosity
 # from stable_baselines3.common.results_plotter import load_results, ts2xy
 # from stable_baselines.results_plotter import load_results, ts2xy
 # import tensorflow as tf

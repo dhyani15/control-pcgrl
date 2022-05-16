@@ -19,4 +19,4 @@ source activate pcgrl
 ## NOTE THIS ACTUALLY WORKS DONT LISTEN TO THE ERROR MESSAGE ???
 conda activate pcgrl
 
-python rl/evaluate_ctrl.py --load_args 0
+python rl/evaluate_ctrl.py --load_args sokoban_ctrl_turtle_vanilla_chng-1.0_0
